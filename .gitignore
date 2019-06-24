@@ -1,0 +1,6 @@
+test_tisv/
+train_tisv/
+.ipynb_checkpoints/
+models/
+*.model
+*~
