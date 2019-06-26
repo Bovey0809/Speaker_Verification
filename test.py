@@ -1,20 +1,13 @@
 import torch
 from torch.nn import functional as F
-# test get cossim
 
 
 def get_cossim(embeddings, centroids):
-    # number of utterances per speaker
     num_utterances = embeddings.shape[1]
+    # Special version of getting centroids, read in the paper.
     utterance_centroids = get_utterance_centroids(embeddings)
-    # flatten the embeddings and utterance centroids to just utterance,
-    # so we can do cosine similarity
     utterance_centroids_flat = utterance_centroids.flatten(0, 1)
     embeddings_flat = embeddings.flatten(0, 1)
-    # the cosine distance between utterance and the associated centroids
-    # for that utterance
-    # this is each speaker's utterances against his own centroid, but each
-    # comparison centroid has the current utterance removed
     cos_same = F.cosine_similarity(embeddings_flat, utterance_centroids_flat)
 
     # now we get the cosine distance between each utterance and the other speakers'
@@ -23,8 +16,7 @@ def get_cossim(embeddings, centroids):
     # operation fast, we vectorize by using matrices L (embeddings) and
     # R (centroids) where L has each utterance repeated sequentially for all
     # comparisons and R has the entire centroids frame repeated for each utterance
-    centroids_expand = centroids.repeat(
-        (num_utterances * embeddings.shape[0], 1))
+    centroids_expand = centroids.repeat(num_utterances * embeddings.shape[0], 1)
     embeddings_expand = embeddings_flat.unsqueeze(
         1).repeat(1, embeddings.shape[0], 1)
     embeddings_expand = embeddings_expand.view(
@@ -77,6 +69,6 @@ def calc_loss(sim_matrix):
     return loss, per_embedding_loss
 
 
-emb = torch.randn(4, 3, 10)
-cen = torch.randn(4, 10)
+emb = torch.arange(120).reshape(4, 3, 10).float()
+cen = emb.mean(1)
 get_cossim(emb, cen)
