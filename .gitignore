@@ -4,3 +4,4 @@ train_tisv/
 models/
 *.model
 *~
+*.csv

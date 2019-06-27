@@ -3,31 +3,24 @@ from torch.nn import functional as F
 
 
 def get_cossim(embeddings, centroids):
-    num_utterances = embeddings.shape[1]
+    num_spk, num_utterances, _ = embeddings.shape
     # Special version of getting centroids, read in the paper.
     utterance_centroids = get_utterance_centroids(embeddings)
     utterance_centroids_flat = utterance_centroids.flatten(0, 1)
     embeddings_flat = embeddings.flatten(0, 1)
     cos_same = F.cosine_similarity(embeddings_flat, utterance_centroids_flat)
-
-    # now we get the cosine distance between each utterance and the other speakers'
-    # centroids
-    # to do so requires comparing each utterance to each centroid. To keep the
+    # comparing each utterance to each centroid. To keep the
     # operation fast, we vectorize by using matrices L (embeddings) and
     # R (centroids) where L has each utterance repeated sequentially for all
     # comparisons and R has the entire centroids frame repeated for each utterance
-    centroids_expand = centroids.repeat(num_utterances * embeddings.shape[0], 1)
-    embeddings_expand = embeddings_flat.unsqueeze(
-        1).repeat(1, embeddings.shape[0], 1)
-    embeddings_expand = embeddings_expand.view(
-        embeddings_expand.shape[0] * embeddings_expand.shape[1], embeddings_expand.shape[-1])
+    centroids_expand = centroids.repeat(num_utterances * num_spk, 1)
+    embeddings_expand = embeddings_flat.unsqueeze(1).repeat(1, num_spk, 1).flatten(0, 1)
     cos_diff = F.cosine_similarity(embeddings_expand, centroids_expand)
-    cos_diff = cos_diff.view(embeddings.size(
-        0), num_utterances, centroids.size(0))
+    cos_diff = cos_diff.view(num_spk, num_utterances, num_spk)
     # assign the cosine distance for same speakers to the proper idx
-    same_idx = list(range(embeddings.size(0)))
-    cos_diff[same_idx, :, same_idx] = cos_same.view(
-        embeddings.shape[0], num_utterances)
+    same_idx = list(range(num_spk))
+    # 在论文里面, 需要分类讨论, 求centorids的时候需要排除自身
+    cos_diff[same_idx, :, same_idx] = cos_same.view(num_spk, num_utterances)
     cos_diff = cos_diff + 1e-6
     return cos_diff
 
@@ -71,4 +64,4 @@ def calc_loss(sim_matrix):
 
 emb = torch.arange(120).reshape(4, 3, 10).float()
 cen = emb.mean(1)
-get_cossim(emb, cen)
+print(get_cossim(emb, cen))

@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch import nn
 import torch.nn.functional as F
-
+from torch.optim.lr_scheduler import StepLR
 from sklearn.model_selection import ParameterGrid
 from sklearn.metrics.pairwise import cosine_distances
 
@@ -104,8 +104,7 @@ def get_utterance_centroids(embeddings):
     sum_centroids = embeddings.sum(dim=1)
     # we want to subtract out each utterance, prior to calculating the
     # the utterance centroid
-    sum_centroids = sum_centroids.reshape(
-        sum_centroids.shape[0], 1, sum_centroids.shape[-1])
+    sum_centroids = sum_centroids.unsqueeze(1)
     # we want the mean but not including the utterance itself, so -1
     num_utterances = embeddings.shape[1] - 1
     centroids = (sum_centroids - embeddings) / num_utterances
@@ -116,12 +115,10 @@ def get_cossim(embeddings, centroids):
     # number of utterances per speaker
     num_utterances = embeddings.shape[1]
     utterance_centroids = get_utterance_centroids(embeddings)
-
     # flatten the embeddings and utterance centroids to just utterance,
     # so we can do cosine similarity
-    utterance_centroids_flat = utterance_centroids.view(
-        utterance_centroids.shape[0] * utterance_centroids.shape[1], -1)
-    embeddings_flat = embeddings.view(embeddings.shape[0] * num_utterances, -1)
+    utterance_centroids_flat = utterance_centroids.flatten(0, 1)
+    embeddings_flat = embeddings.flatten(0, 1)
     # the cosine distance between utterance and the associated centroids
     # for that utterance
     # this is each speaker's utterances against his own centroid, but each
@@ -138,8 +135,7 @@ def get_cossim(embeddings, centroids):
         (num_utterances * embeddings.shape[0], 1))
     embeddings_expand = embeddings_flat.unsqueeze(
         1).repeat(1, embeddings.shape[0], 1)
-    embeddings_expand = embeddings_expand.view(
-        embeddings_expand.shape[0] * embeddings_expand.shape[1], embeddings_expand.shape[-1])
+    embeddings_expand = embeddings_expand.flatten(0, 1)
     cos_diff = F.cosine_similarity(embeddings_expand, centroids_expand)
     cos_diff = cos_diff.view(embeddings.size(
         0), num_utterances, centroids.size(0))
@@ -179,8 +175,8 @@ class SpeakerDatasetTIMITPreprocessed(Dataset):
         np_file_list = os.listdir(self.path)
 
         if self.shuffle:
-            selected_file = random.sample(np_file_list, 1)[
-                0]  # select random speaker
+            selected_file = random.sample(np_file_list, 1)[0]
+            # select random speaker
         else:
             selected_file = np_file_list[idx]
 
@@ -226,6 +222,7 @@ class SpeechEmbedder(nn.Module):
         x = self.projection(x)  # [batch, projection]
         x = F.normalize(x)  # x.shape == [batch, projection]
         x = torch.reshape(x, (self.n, self.m, self.proj))
+        # This line is different from original
         return x
 
 
@@ -233,11 +230,11 @@ class GE2ELoss(nn.Module):
 
     def __init__(self, device):
         super(GE2ELoss, self).__init__()
-        self.w = nn.Parameter(torch.tensor(10.0, device=device))
-        self.b = nn.Parameter(torch.tensor(-5.0, device=device))
+        self.w = nn.Parameter(torch.tensor(10.0, device=device), requires_grad=True)
+        self.b = nn.Parameter(torch.tensor(-5.0, device=device), requires_grad=True)
 
     def forward(self, X, **kwargs):
-        torch.clamp(self.w, 1e-7)  # 论文里面是0, 代码用的1e-7
+        torch.clamp(self.w, 1e-6)  # 论文里面是0, 代码用的1e-7
         centroids = get_centroids(X)
         cossim = get_cossim(X, centroids)
         sim_matrix = self.w*cossim + self.b
@@ -245,6 +242,7 @@ class GE2ELoss(nn.Module):
         return loss
 
 
+# add timing for train
 def logging(f):
     def _f(**kargs):
         print(f"PARMS: {kargs}")
@@ -256,48 +254,59 @@ def logging(f):
 
 
 @logging
-def train(lr=0.001, epochs=10, proj=256, hidden=128, num_layers=4, device='cuda', opt='Adam', debug=False):
+def train(N=16, lr=0.01, epochs=10, proj=256, hidden=768, num_layers=3, device='cuda', opt='SGD', debug=False, schedule=True, step_size=2e3):
     # define net, loss, optimizer
     device = torch.device(device)
-    N = 100
+    N = N
     M = 6
     embedder_net = SpeechEmbedder(
         hidden=hidden, num_layers=num_layers, proj=proj, N=N, M=M).to(device)
     criterion = GE2ELoss(device)
     if opt == 'Adam':
         optimizer = torch.optim.Adam([{'params': embedder_net.parameters()},
-                                      {'params': criterion.parameters()}], lr=lr)
+                                      {'params': criterion.parameters()}], lr)
     elif opt == 'SGD':
         optimizer = torch.optim.SGD([{'params': embedder_net.parameters()},
-                                     {'params': criterion.parameters()}], lr=lr)
-    # print(f"Your optimizer is {optimizer}")
+                                     {'params': criterion.parameters()}], lr)
+
+    # schedule
+    if schedule:
+        scheduler = StepLR(optimizer, step_size, gamma=0.5)
     train_dataset = SpeakerDatasetTIMITPreprocessed('./train_tisv/', M)
     train_loader = DataLoader(
         train_dataset, batch_size=N, drop_last=True, shuffle=True)
-    # print(len(train_loader))
+
     # train network
-    epochs = epochs
+    total_length = len(train_dataset)
     loss_log = []
+    iteration = 0
     for e in range(epochs):
+        if schedule:
+            scheduler.step()
         epoch_loss = 0
         for batch_id, mel_db in enumerate(train_loader):
-            # we have only 270 people the batch size is 1.
             mel_db = mel_db.to(device)
-            mel_db = mel_db.reshape(N * M, mel_db.size(2), mel_db.size(3))
+            mel_db = mel_db.flatten(0, 1)
             optimizer.zero_grad()
             embeddings = embedder_net(mel_db)
             loss = criterion(embeddings)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(embedder_net.parameters(), 3.0)
+            torch.nn.utils.clip_grad_norm_(criterion.parameters(), 1.0)
             optimizer.step()
             epoch_loss += loss.item()
-            if debug:
-                print(batch_id, epoch_loss)
+            if iteration % 3 == 0:
+                mesg = f"{ctime()}\tEpoch:{e} BATCH:{batch_id}/{total_length//N}\tLoss: {loss:.4f}\t TLoss{epoch_loss/(batch_id+1):.4f}"
+                print(mesg)
+            iteration += 1
         loss_log.append(epoch_loss)
-    if debug:
-        plt.plot(loss_log)
-    save_model_path = f'lr{lr}epochs{epochs}proj{proj}hidden{hidden}num_layers{num_layers}opt{opt}.model'
+    if not os.path.exists('./models'):
+        os.makedirs('./models')
+    save_model_path = f'./models/lr{lr}epochs{epochs}proj{proj}hidden{hidden}num_layers{num_layers}opt{opt}.model'
     torch.save(embedder_net.state_dict(), save_model_path)
     return save_model_path, loss_log
+
+# test loss printout
 
 
 def test(model_path, **kargs):
@@ -315,7 +324,9 @@ def test(model_path, **kargs):
     embedder_net.eval()
     epochs = 10
     acc = 0
+    avg_EER = 0
     for e in range(epochs):
+        batch_avg_EER = 0
         for batch_id, mel_db in enumerate(test_loader):
             mel_db = mel_db.to(device)
             utt_num = mel_db.shape[1]
@@ -325,17 +336,47 @@ def test(model_path, **kargs):
                 enrollment.reshape(-1, mel_db.size(2), mel_db.size(3)))
             verification = embedder_net(
                 verification.reshape(-1, mel_db.size(2), mel_db.size(3)))
-            enrollment = get_centroids(enrollment)
+            enrollment_centroids = get_centroids(enrollment)
+            # what if verification get centorids
+            sim_matrix = get_cossim(
+                verification, enrollment_centroids)  # N * M * proj
+
+            # calculating EER
+            diff = 1
+            EER = 0
+            EER_thresh = 0
+            EER_FAR = 0
+            EER_FRR = 0
+
+            for thres in [0.01*i+0.5 for i in range(50)]:
+                sim_matrix_thresh = sim_matrix > thres
+
+                FAR = (sum([sim_matrix_thresh[i].float().sum()-sim_matrix_thresh[i, :, i].float().sum() for i in range(int(N))])
+                       / (N-1.0)/(float(M/2))/N)
+
+                FRR = (sum([M/2-sim_matrix_thresh[i, :, i].float().sum() for i in range(int(N))])
+                       / (float(M/2))/N)
+
+                # Save threshold when FAR = FRR (=EER)
+                if diff > abs(FAR-FRR):
+                    diff = abs(FAR-FRR)
+                    EER = (FAR+FRR)/2
+                    EER_thresh = thres
+                    EER_FAR = FAR
+                    EER_FRR = FRR
+            batch_avg_EER += EER
+            print("EER : %0.2f (thres:%0.2f, FAR:%0.2f, FRR:%0.2f)" %
+                  (EER, EER_thresh, EER_FAR, EER_FRR))
+            # calculating ACC
             verification = get_centroids(verification)
-            result = cosine_distances(verification.detach(
-            ).cpu().numpy(), enrollment.detach().cpu().numpy())
+            result = cosine_distances(verification.detach().cpu(
+            ).numpy(), enrollment_centroids.detach().cpu().numpy())
             batch_acc = sum(list(range(N)) == result.argmin(0)) / N
             acc += batch_acc
             print(f"BATCH ACC:{batch_acc}")
+        avg_EER += batch_avg_EER/(batch_id+1)
+    avg_EER = avg_EER / epochs
     return acc/10
-
-# test test()
-# test(save_path)
 
 
 def pipeline(**params):
@@ -345,7 +386,8 @@ def pipeline(**params):
                                    proj=params['proj'],
                                    hidden=params['hidden'],
                                    num_layers=params['num_layers'],
-                                   opt=params['optim'])
+                                   opt=params['opt'],
+                                   N=params['N'])
     # plt.plot(total_loss)
     print(f"LOSS: {total_loss[-10:]}")
 
@@ -361,11 +403,12 @@ if __name__ == '__main__':
     # parameters sets
     parameters = {
         'max_epochs': [10000],
-        'lr': [0.001, 0.003],
-        'proj': [64, 128, 256],
-        'hidden': [128, 256],
-        'num_layers': [3, 4],
-        'optim': ['Adam', 'SGD']
+        'lr': [0.01, 0.001],
+        'proj': [256],
+        'hidden': [768],
+        'num_layers': [3],
+        'opt': ['SGD', 'Adam'],
+        'N': [64, 32]
     }
     grid = ParameterGrid(parameters)
     max_acc = 0
@@ -377,7 +420,8 @@ if __name__ == '__main__':
                        proj=params['proj'],
                        hidden=params['hidden'],
                        num_layers=params['num_layers'],
-                       optim=params['optim'])
+                       opt=params['opt'],
+                       N=params['N'])
         print(f"ACC: {acc:4f}")
         result.loc[i, 'acc'] = acc
         if acc > max_acc:
