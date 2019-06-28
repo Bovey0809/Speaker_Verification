@@ -1,67 +1,71 @@
 import torch
-from torch.nn import functional as F
+from data_load import SpeakerDatasetTIMITPreprocessed
+from embedder_net import SpeechEmbedder
+from torch.utils.data import DataLoader
+from utils import get_cossim
 
 
-def get_cossim(embeddings, centroids):
-    num_spk, num_utterances, _ = embeddings.shape
-    # Special version of getting centroids, read in the paper.
-    utterance_centroids = get_utterance_centroids(embeddings)
-    utterance_centroids_flat = utterance_centroids.flatten(0, 1)
-    embeddings_flat = embeddings.flatten(0, 1)
-    cos_same = F.cosine_similarity(embeddings_flat, utterance_centroids_flat)
-    # comparing each utterance to each centroid. To keep the
-    # operation fast, we vectorize by using matrices L (embeddings) and
-    # R (centroids) where L has each utterance repeated sequentially for all
-    # comparisons and R has the entire centroids frame repeated for each utterance
-    centroids_expand = centroids.repeat(num_utterances * num_spk, 1)
-    embeddings_expand = embeddings_flat.unsqueeze(1).repeat(1, num_spk, 1).flatten(0, 1)
-    cos_diff = F.cosine_similarity(embeddings_expand, centroids_expand)
-    cos_diff = cos_diff.view(num_spk, num_utterances, num_spk)
-    # assign the cosine distance for same speakers to the proper idx
-    same_idx = list(range(num_spk))
-    # 在论文里面, 需要分类讨论, 求centorids的时候需要排除自身
-    cos_diff[same_idx, :, same_idx] = cos_same.view(num_spk, num_utterances)
-    cos_diff = cos_diff + 1e-6
-    return cos_diff
+def test(model_path, **kargs):
+    # test network
+    N = 30
+    M = 6
+    test_dataset = SpeakerDatasetTIMITPreprocessed('./test_tisv/', M)
+    test_loader = DataLoader(test_dataset, batch_size=N,
+                             drop_last=True, shuffle=True)
+    embedder_net = SpeechEmbedder(
+        40, kargs['hidden'], kargs['num_layers'], kargs['proj'], N, M//2)
 
+    embedder_net.load_state_dict(torch.load(model_path))
+    device = torch.device('cuda')
+    embedder_net.to(device)
+    embedder_net.eval()
+    epochs = 10
+    acc = 0
+    avg_EER = 0
+    for e in range(epochs):
+        batch_avg_EER = 0
+        for batch_id, mel_db in enumerate(test_loader):
+            mel_db = mel_db.to(device)
+            utt_num = mel_db.shape[1]
+            assert utt_num % 2 == 0
+            enrollment, verification = torch.split(mel_db, utt_num // 2, dim=1)
+            enrollment_flatten = enrollment.flatten(0, 1)
+            verification_flatten = verification.flatten(0, 1)
+            enrollment_embeddings = embedder_net(enrollment_flatten)
+            verification_embeddings = embedder_net(verification_flatten)
+            enrollment_centroids = enrollment_embeddings.mean(1)
+            # what if verification get centorids
+            sim_matrix = get_cossim(
+                verification_embeddings, enrollment_centroids)  # N * M * proj
 
-def get_centroids(embeddings):
-    centroids = embeddings.mean(dim=1)
-    return centroids
+            # calculating EER
+            diff = 1
+            EER = 0
+            EER_thresh = 0
+            EER_FAR = 0
+            EER_FRR = 0
 
-
-def get_utterance_centroids(embeddings):
-    """
-    Returns the centroids for each utterance of a speaker, where
-    the utterance centroid is the speaker centroid without considering
-    this utterance
-
-    Shape of embeddings should be:
-    (speaker_ct, utterance_per_speaker_ct, embedding_size)
-    这里(N, M, proj)->(N, k, proj)
-    意思是对于每一个人(N), 求除了本身之外的utt的均值.
-    例如, ouput.shape == (4, 3, 64), 那么一个对于output[0][0], 就是除了本身之外的另外两个的均值.
-    """
-    sum_centroids = embeddings.sum(dim=1)
-    # we want to subtract out each utterance, prior to calculating the
-    # the utterance centroid
-    sum_centroids = sum_centroids.unsqueeze(1)
-    # print("sumcent", sum_centroids.shape)
-    # we want the mean but not including the utterance itself, so -1
-    num_utterances = embeddings.shape[1] - 1
-    centroids = (sum_centroids - embeddings) / num_utterances
-    return centroids
-
-
-def calc_loss(sim_matrix):
-    same_idx = list(range(sim_matrix.size(0)))
-    pos = sim_matrix[same_idx, :, same_idx]
-    neg = (torch.exp(sim_matrix).sum(dim=2) + 1e-6).log_()
-    per_embedding_loss = -1 * (pos - neg)
-    loss = per_embedding_loss.sum()
-    return loss, per_embedding_loss
-
-
-emb = torch.arange(120).reshape(4, 3, 10).float()
-cen = emb.mean(1)
-print(get_cossim(emb, cen))
+            for thres in [0.01*i+0.5 for i in range(50)]:
+                sim_matrix_thresh = sim_matrix > thres
+                FAR = (sum([sim_matrix_thresh[i].float().sum()-sim_matrix_thresh[i, :, i].float().sum() for i in range(int(N))])
+                       / (N-1.0)/(float(M/2))/N)
+                FRR = (sum([M/2-sim_matrix_thresh[i, :, i].float().sum() for i in range(int(N))])
+                       / (float(M/2))/N)
+                # Save threshold when FAR = FRR (=EER)
+                if diff > abs(FAR-FRR):
+                    diff = abs(FAR-FRR)
+                    EER = (FAR+FRR)/2
+                    EER_thresh = thres
+                    EER_FAR = FAR
+                    EER_FRR = FRR
+            batch_avg_EER += EER
+            print("EER : %0.2f (thres:%0.2f, FAR:%0.2f, FRR:%0.2f)" %
+                  (EER, EER_thresh, EER_FAR, EER_FRR))
+            
+            # calculating ACC
+            batch_acc = 0
+            acc += batch_acc
+            print(f"BATCH ACC:{batch_acc}")
+        avg_EER += batch_avg_EER/(batch_id+1)
+    avg_EER = avg_EER / epochs
+    return acc/10

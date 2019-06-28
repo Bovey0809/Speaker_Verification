@@ -5,3 +5,4 @@ models/
 *.model
 *~
 *.csv
+__pycache__
