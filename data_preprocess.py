@@ -9,15 +9,15 @@ import glob
 def save_spectrogram_tisv(audio_path):
     tisv_frame = 180
     hop = 0.01
-    window = 0.0025
+    window = 0.025
     sr = 8000
     nfft = 512
     nmels = 40
 
     print("start text independent utterance feature extraction")
     audio_path = glob.glob(os.path.dirname(audio_path))
-    rmtree('./train_tisv/')
-    rmtree('./test_tisv/')
+    rmtree('./train_tisv/', ignore_errors=True)
+    rmtree('./test_tisv/', ignore_errors=True)
     # make folder to save train file
     os.makedirs('./train_tisv', exist_ok=True)
     # make folder to save test file

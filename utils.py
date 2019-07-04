@@ -1,5 +1,6 @@
 import torch
 from torch.nn import functional as F
+from time import time
 
 
 def get_centroids(embeddings):
@@ -50,3 +51,15 @@ def calc_loss(sim_matrix):
     per_embedding_loss = -1 * (pos - neg)
     loss = per_embedding_loss.sum()
     return loss, per_embedding_loss
+
+# add timing for train
+
+
+def logging(f):
+    def _f(**kargs):
+        print(f"PARMS: {kargs}")
+        current = time()
+        result = f(**kargs)
+        print(f"TIME: {(time() - current):.3f} seconds")
+        return result
+    return _f

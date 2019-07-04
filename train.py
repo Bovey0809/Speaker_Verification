@@ -3,19 +3,9 @@ import os
 from torch.optim.lr_scheduler import StepLR
 from data_load import SpeakerDatasetTIMITPreprocessed
 from embedder_net import SpeechEmbedder, GE2ELoss
-from time import ctime, time
+from time import ctime
 from torch.utils.data import DataLoader
-
-
-# add timing for train
-def logging(f):
-    def _f(**kargs):
-        print(f"PARMS: {kargs}")
-        current = time()
-        result = f(**kargs)
-        print(f"TIME: {(time() - current):.3f} seconds")
-        return result
-    return _f
+from utils import logging
 
 
 @logging
@@ -30,10 +20,13 @@ def train(N=16, lr=0.01, epochs=10, proj=256, hidden=768, num_layers=3, opt='SGD
     criterion = GE2ELoss(device)
     if opt == 'Adam':
         optimizer = torch.optim.Adam([{'params': embedder_net.parameters()},
-                                      {'params': criterion.parameters()}], lr)
+                                      {'params': criterion.parameters()}],
+                                     lr,
+                                     (0.5, 0.9))
     elif opt == 'SGD':
         optimizer = torch.optim.SGD([{'params': embedder_net.parameters()},
-                                     {'params': criterion.parameters()}], lr)
+                                     {'params': criterion.parameters()}],
+                                    lr)
 
     # schedule
     if opt == 'SGD':

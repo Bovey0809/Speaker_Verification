@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 from sklearn.model_selection import ParameterGrid
 from test import test
@@ -25,15 +26,19 @@ def pipeline(**params):
 
 
 if __name__ == '__main__':
+    if sys.argv[1]:
+        max_epoch = int(sys.argv[1])
+    else:
+        max_epoch = 100
     # parameters sets
     parameters = {
-        'max_epochs': [10000],
+        'max_epochs': [max_epoch],
         'lr': [0.001],
         'proj': [256],
         'hidden': [768],
         'num_layers': [3],
         'opt': ['Adam'],
-        'N': [128]
+        'N': [4]
     }
     grid = ParameterGrid(parameters)
     max_acc = 0
