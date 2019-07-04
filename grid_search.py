@@ -27,13 +27,13 @@ def pipeline(**params):
 if __name__ == '__main__':
     # parameters sets
     parameters = {
-        'max_epochs': [10],
-        'lr': [0.01],
+        'max_epochs': [10000],
+        'lr': [0.001],
         'proj': [256],
         'hidden': [768],
         'num_layers': [3],
-        'opt': ['SGD'],
-        'N': [16]
+        'opt': ['Adam'],
+        'N': [128]
     }
     grid = ParameterGrid(parameters)
     max_acc = 0

@@ -11,7 +11,7 @@ def test(model_path, **kargs):
     M = 6
     test_dataset = SpeakerDatasetTIMITPreprocessed('./test_tisv/', M)
     test_loader = DataLoader(test_dataset, batch_size=N,
-                             drop_last=True, shuffle=True)
+                             drop_last=True, shuffle=True, num_workers=12)
     embedder_net = SpeechEmbedder(
         40, kargs['hidden'], kargs['num_layers'], kargs['proj'], N, M//2)
 
@@ -68,4 +68,5 @@ def test(model_path, **kargs):
             print(f"BATCH ACC:{batch_acc}")
         avg_EER += batch_avg_EER/(batch_id+1)
     avg_EER = avg_EER / epochs
+    print(f"AVG EER:{avg_EER}")
     return acc/10

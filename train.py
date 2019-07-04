@@ -19,10 +19,10 @@ def logging(f):
 
 
 @logging
-def train(N=16, lr=0.01, epochs=10, proj=256, hidden=768, num_layers=3, opt='SGD', debug=False, schedule=True, step_size=2e3):
+def train(N=16, lr=0.01, epochs=10, proj=256, hidden=768, num_layers=3, opt='SGD', debug=False, step_size=2e3):
     # define net, loss, optimizer
     device = torch.device('cuda')
-    N = N
+    N = int(N)
     M = 6
     embedder_net = SpeechEmbedder(
         hidden=hidden, num_layers=num_layers, proj=proj, N=N, M=M)
@@ -36,18 +36,18 @@ def train(N=16, lr=0.01, epochs=10, proj=256, hidden=768, num_layers=3, opt='SGD
                                      {'params': criterion.parameters()}], lr)
 
     # schedule
-    if schedule:
+    if opt == 'SGD':
         scheduler = StepLR(optimizer, step_size, gamma=0.5)
     train_dataset = SpeakerDatasetTIMITPreprocessed('./train_tisv/', M)
     train_loader = DataLoader(
-        train_dataset, batch_size=N, drop_last=True, shuffle=True)
+        train_dataset, batch_size=N, drop_last=True, shuffle=True, num_workers=12)
 
     # train network
     total_length = len(train_dataset)
     loss_log = []
     iteration = 0
     for e in range(epochs):
-        if schedule:
+        if opt == 'SGD':
             scheduler.step()
         epoch_loss = 0
         for batch_id, mel_db in enumerate(train_loader):
