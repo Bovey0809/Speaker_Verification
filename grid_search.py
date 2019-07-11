@@ -14,7 +14,8 @@ def pipeline(**params):
                        hidden=params['hidden'],
                        num_layers=params['num_layers'],
                        opt=params['opt'],
-                       N=params['N'])
+                       N=params['N'],
+                       step_size=params['step_size'])
 
     # testing
     # acc = test(model_path,
@@ -28,13 +29,14 @@ if __name__ == '__main__':
 
     # parameters sets
     parameters = {
-        'max_epochs': [6000],
-        'lr': [0.001],
-        'proj': [64],
+        'max_epochs': [1500],
+        'lr': [0.005, 0.01],
+        'proj': [128],
         'hidden': [768],
         'num_layers': [3],
-        'opt': ['Adam'],
-        'N': [64]
+        'opt': ['SGD'],
+        'N': [128],
+        'step_size': [1e2, 1e3, 1e4]
     }
     grid = ParameterGrid(parameters)
     max_acc = 0
@@ -47,7 +49,8 @@ if __name__ == '__main__':
                  hidden=params['hidden'],
                  num_layers=params['num_layers'],
                  opt=params['opt'],
-                 N=params['N'])
+                 N=params['N'],
+                 step_size=params['step_size'])
     #     print(f"ACC: {acc:4f}")
     #     result.loc[i, 'acc'] = acc
     #     if acc > max_acc:
