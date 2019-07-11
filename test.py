@@ -61,7 +61,7 @@ def test(model_path, **kargs):
             batch_avg_EER += EER
             print("EER : %0.2f (thres:%0.2f, FAR:%0.2f, FRR:%0.2f)" %
                   (EER, EER_thresh, EER_FAR, EER_FRR))
-            
+
             # calculating ACC
             batch_acc = 0
             acc += batch_acc
@@ -70,3 +70,5 @@ def test(model_path, **kargs):
     avg_EER = avg_EER / epochs
     print(f"AVG EER:{avg_EER}")
     return acc/10
+
+

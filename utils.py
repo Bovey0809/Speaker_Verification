@@ -63,3 +63,8 @@ def logging(f):
         print(f"TIME: {(time() - current):.3f} seconds")
         return result
     return _f
+
+
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']
