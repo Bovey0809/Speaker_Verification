@@ -1,9 +1,7 @@
-import sys
-import pandas as pd
 from sklearn.model_selection import ParameterGrid
 from test import test
 from train import train
-from time import ctime
+
 
 
 def pipeline(**params):
@@ -29,18 +27,18 @@ if __name__ == '__main__':
 
     # parameters sets
     parameters = {
-        'max_epochs': [1500],
-        'lr': [0.005, 0.01],
-        'proj': [128],
+        'max_epochs': [1000],
+        'lr': [0.1, 0.05, 0.01],
+        'proj': [128, 256, 512],
         'hidden': [768],
         'num_layers': [3],
-        'opt': ['SGD'],
+        'opt': ['Adam', 'SGD'],
         'N': [128],
-        'step_size': [1e2, 1e3, 1e4]
+        'step_size': [1e7]
     }
     grid = ParameterGrid(parameters)
     max_acc = 0
-    result = pd.DataFrame(grid)
+    # result = pd.DataFrame(grid)
 
     for i, params in enumerate(grid):
         pipeline(lr=params['lr'],

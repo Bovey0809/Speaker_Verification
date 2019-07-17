@@ -6,7 +6,7 @@ import sys
 import glob
 
 
-def save_spectrogram_tisv(audio_path):
+def save_spectrogram_tisv(audio_path, dataset_name='company_old'):
     tisv_frame = 180
     hop = 0.01
     window = 0.025
@@ -16,12 +16,14 @@ def save_spectrogram_tisv(audio_path):
 
     print("start text independent utterance feature extraction")
     audio_path = glob.glob(os.path.dirname(audio_path))
-    rmtree('./train_tisv/', ignore_errors=True)
-    rmtree('./test_tisv/', ignore_errors=True)
+    train_dataset_path = f"./{dataset_name}/train_tisv"
+    test_dataset_path = f"./{dataset_name}/test_tisv"
+    rmtree(train_dataset_path, ignore_errors=True)
+    rmtree(test_dataset_path, ignore_errors=True)
     # make folder to save train file
-    os.makedirs('./train_tisv', exist_ok=True)
+    os.makedirs(train_dataset_path, exist_ok=True)
     # make folder to save test file
-    os.makedirs('./test_tisv', exist_ok=True)
+    os.makedirs(test_dataset_path, exist_ok=True)
     _minium_name_file_per_speaker = 10000
     utter_min_len = (tisv_frame * hop + window) * \
         sr    # lower bound of utterance length
@@ -66,10 +68,10 @@ def save_spectrogram_tisv(audio_path):
         if utterances_spec.shape[0] < _minium_name_file_per_speaker:
             _minium_name_file_per_speaker = utterances_spec.shape[0]
         if i < train_speaker_num:
-            np.save(os.path.join('./train_tisv', "speaker%d.npy" %
+            np.save(os.path.join(train_dataset_path, "speaker%d.npy" %
                                  i), utterances_spec)
         else:
-            np.save(os.path.join('./test_tisv',
+            np.save(os.path.join(test_dataset_path,
                                  f"speaker{i-train_speaker_num}"), utterances_spec)
         print(utterances_spec.shape)
 
