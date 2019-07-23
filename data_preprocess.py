@@ -6,7 +6,7 @@ import sys
 import glob
 
 
-def save_spectrogram_tisv(audio_path, dataset_name='company_old'):
+def save_spectrogram_tisv(audio_path, dataset_name='new_dataset'):
     tisv_frame = 180
     hop = 0.01
     window = 0.025
@@ -15,7 +15,7 @@ def save_spectrogram_tisv(audio_path, dataset_name='company_old'):
     nmels = 40
 
     print("start text independent utterance feature extraction")
-    audio_path = glob.glob(os.path.dirname(audio_path))
+    audio_path = glob.glob(os.path.join(audio_path, '*'))
     train_dataset_path = f"./{dataset_name}/train_tisv"
     test_dataset_path = f"./{dataset_name}/test_tisv"
     rmtree(train_dataset_path, ignore_errors=True)

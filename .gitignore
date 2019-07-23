@@ -9,3 +9,6 @@ __pycache__
 log/
 dataset*
 \#*
+\.\#*
+play_ground.py
+new_data_draft.ipynb
