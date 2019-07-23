@@ -9,7 +9,15 @@ from utils import get_cossim, get_lr
 from torch.utils.tensorboard import SummaryWriter
 
 
-def train(dataset, log_dir='log', N=16, lr=0.01, epochs=100, proj=256, hidden=768, num_layers=3, opt='Adam', debug=False, step_size=2e3):
+def train(dataset, log_dir='log_umee', N=16, lr=0.01, epochs=10, proj=256, hidden=768, num_layers=3, opt='Adam', debug=False, step_size=2e3, save_model=False):
+    '''
+    Training the model with preprocessed datasets.
+    Example
+    python train.py dataset/train_tisv/
+    
+    With grid search method together
+    python grid_search.py
+    '''
     subdir = '_'.join(
         [str(i) for i in [N, lr, epochs, proj, hidden, num_layers, opt, step_size]])
     print(subdir)
@@ -90,15 +98,20 @@ def train(dataset, log_dir='log', N=16, lr=0.01, epochs=100, proj=256, hidden=76
                     EER_thresh = thres
                     EER_FAR = FAR
                     EER_FRR = FRR
+            
             batch_avg_EER += EER
+            writer.add_text('EER', f"{EER}: thres: {EER_thresh:.2f}, FAR:{EER_FAR:.2f}, FRR: {EER_FRR:.2f}")
+            writer.add_scalar('FAR', EER_FAR, iteration)
+            writer.add_scalar('FRR', EER_FRR, iteration)
             writer.add_scalar('EER', EER, iteration)
             writer.add_scalar('BATCH EER', batch_avg_EER, iteration)
             writer.add_scalar('epoch loss', epoch_loss, epoch)
-    if not os.path.exists('./models'):
-        os.makedirs('./models')
-    save_model_path = os.path.join('models', subdir)
-    torch.save(embedder_net.state_dict(), save_model_path)
-    return save_model_path
+    if save_model is True:
+        if not os.path.exists('./models'):
+            os.makedirs('./models')
+        save_model_path = os.path.join('models', subdir)
+        torch.save(embedder_net.state_dict(), save_model_path)
+        return save_model_path
 
 
 if __name__ == '__main__':

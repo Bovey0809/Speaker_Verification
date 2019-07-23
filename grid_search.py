@@ -27,13 +27,13 @@ if __name__ == '__main__':
 
     # parameters sets
     parameters = {
-        'max_epochs': [1000],
-        'lr': [0.1, 0.05, 0.01],
+        'max_epochs': [2000],
+        'lr': [0.01, 0.001],
         'proj': [128, 256, 512],
         'hidden': [768],
         'num_layers': [3],
         'opt': ['Adam'],
-        'N': [128],
+        'N': [128, 64, 32],
         'step_size': [1e7]
     }
     grid = ParameterGrid(parameters)
