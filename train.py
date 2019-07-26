@@ -5,11 +5,11 @@ from torch.optim.lr_scheduler import StepLR
 from data_load import SpeakerDatasetTIMITPreprocessed
 from embedder_net import SpeechEmbedder, GE2ELoss
 from torch.utils.data import DataLoader
-from utils import get_cossim, get_lr
+from utils import get_cossim
 from torch.utils.tensorboard import SummaryWriter
 
 
-def train(dataset, log_dir='log_umee', N=16, lr=0.01, epochs=10, proj=256, hidden=768, num_layers=3, opt='Adam', debug=False, step_size=2e3, save_model=False):
+def train(dataset, log_dir='log_umee_sr', N=128, lr=0.0001, epochs=2000, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=True):
     '''
     Training the model with preprocessed datasets.
     Example
@@ -59,7 +59,7 @@ def train(dataset, log_dir='log_umee', N=16, lr=0.01, epochs=10, proj=256, hidde
             mel_db = mel_db.flatten(0, 1)
             optimizer.zero_grad()
             # writer.add_graph(embedder_net, mel_db)
-            writer.add_scalar('lr', get_lr(optimizer), iteration)
+            # writer.add_scalar('lr', get_lr(optimizer), iteration)
             embeddings = embedder_net(mel_db)
             loss = criterion(embeddings)
             loss.backward()
@@ -109,7 +109,7 @@ def train(dataset, log_dir='log_umee', N=16, lr=0.01, epochs=10, proj=256, hidde
     if save_model is True:
         if not os.path.exists('./models'):
             os.makedirs('./models')
-        save_model_path = os.path.join('models', subdir)
+        save_model_path = os.path.join('models', subdir+'transfer_model')
         torch.save(embedder_net.state_dict(), save_model_path)
         return save_model_path
 
