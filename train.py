@@ -21,7 +21,8 @@ def train(dataset, log_dir='log_umee_sr', N=128, lr=0.0001, epochs=2000, proj=51
     subdir = '_'.join(
         [str(i) for i in [N, lr, epochs, proj, hidden, num_layers, opt, step_size]])
     print(subdir)
-    writer = SummaryWriter(f'./{log_dir}/{subdir}')
+    if log_dir:
+        writer = SummaryWriter(f'./{log_dir}/{subdir}')
     # define net, loss, optimizer
     device = torch.device('cuda')
     N = int(N)
@@ -67,7 +68,8 @@ def train(dataset, log_dir='log_umee_sr', N=128, lr=0.0001, epochs=2000, proj=51
             torch.nn.utils.clip_grad_norm_(criterion.parameters(), 1.0)
             optimizer.step()
             epoch_loss += loss.item()
-            writer.add_scalar('batch loss', loss, iteration)
+            if log_dir:
+                writer.add_scalar('batch loss', loss, iteration)
             iteration += 1
 
             # validation for eer
@@ -101,11 +103,12 @@ def train(dataset, log_dir='log_umee_sr', N=128, lr=0.0001, epochs=2000, proj=51
             
             batch_avg_EER += EER
             writer.add_text('EER', f"{EER}: thres: {EER_thresh:.2f}, FAR:{EER_FAR:.2f}, FRR: {EER_FRR:.2f}")
-            writer.add_scalar('FAR', EER_FAR, iteration)
-            writer.add_scalar('FRR', EER_FRR, iteration)
-            writer.add_scalar('EER', EER, iteration)
-            writer.add_scalar('BATCH EER', batch_avg_EER, iteration)
-            writer.add_scalar('epoch loss', epoch_loss, epoch)
+            if log_dir:
+                writer.add_scalar('FAR', EER_FAR, iteration)
+                writer.add_scalar('FRR', EER_FRR, iteration)
+                writer.add_scalar('EER', EER, iteration)
+                writer.add_scalar('BATCH EER', batch_avg_EER, iteration)
+                writer.add_scalar('epoch loss', epoch_loss, epoch)
     if save_model is True:
         if not os.path.exists('./models'):
             os.makedirs('./models')
