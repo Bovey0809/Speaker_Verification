@@ -5,11 +5,11 @@ from torch.optim.lr_scheduler import StepLR
 from data_load import SpeakerDatasetTIMITPreprocessed
 from embedder_net import SpeechEmbedder, GE2ELoss
 from torch.utils.data import DataLoader
-from utils import get_cossim
+from utils import get_cossim, calc_loss, get_acc
 from torch.utils.tensorboard import SummaryWriter
 
 
-def train(dataset, log_dir='log_umee_sr', N=128, lr=0.0001, epochs=2000, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=True):
+def train(dataset, log_dir='test_acc', N=128, lr=0.0001, epochs=2000, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=True):
     '''
     Training the model with preprocessed datasets.
     Example
@@ -62,14 +62,19 @@ def train(dataset, log_dir='log_umee_sr', N=128, lr=0.0001, epochs=2000, proj=51
             # writer.add_graph(embedder_net, mel_db)
             # writer.add_scalar('lr', get_lr(optimizer), iteration)
             embeddings = embedder_net(mel_db)
-            loss = criterion(embeddings)
+            sim_matrix = criterion(embeddings)
+            # get acc_val
+
+            loss, per_embedding_loss = calc_loss(sim_matrix)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(embedder_net.parameters(), 3.0)
             torch.nn.utils.clip_grad_norm_(criterion.parameters(), 1.0)
             optimizer.step()
             epoch_loss += loss.item()
+            acc = get_acc(sim_matrix, N, M)
             if log_dir:
                 writer.add_scalar('batch loss', loss, iteration)
+                writer.add_scalar('accuracy', acc, iteration)
             iteration += 1
 
             # validation for eer
@@ -102,8 +107,9 @@ def train(dataset, log_dir='log_umee_sr', N=128, lr=0.0001, epochs=2000, proj=51
                     EER_FRR = FRR
             
             batch_avg_EER += EER
-            writer.add_text('EER', f"{EER}: thres: {EER_thresh:.2f}, FAR:{EER_FAR:.2f}, FRR: {EER_FRR:.2f}")
+            
             if log_dir:
+                writer.add_text('EER', f"{EER}: thres: {EER_thresh:.2f}, FAR:{EER_FAR:.2f}, FRR: {EER_FRR:.2f}")
                 writer.add_scalar('FAR', EER_FAR, iteration)
                 writer.add_scalar('FRR', EER_FRR, iteration)
                 writer.add_scalar('EER', EER, iteration)

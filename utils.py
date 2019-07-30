@@ -68,3 +68,10 @@ def logging(f):
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
+
+
+def get_acc(sim_matrix, N, M):
+    predicted = torch.argmax(sim_matrix, 2)
+    groud_truth = torch.transpose(torch.arange(N, device=sim_matrix.device).repeat(M, 1), 0, 1)
+    acc = torch.sum(torch.eq(predicted, groud_truth), dtype=torch.float)/N/M
+    return acc

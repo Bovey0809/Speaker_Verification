@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from utils import get_centroids, get_cossim, calc_loss
+from utils import get_centroids, get_cossim
 
 
 class SpeechEmbedder(nn.Module):
@@ -46,5 +46,6 @@ class GE2ELoss(nn.Module):
         centroids = get_centroids(X)
         cossim = get_cossim(X, centroids)
         sim_matrix = self.w*cossim + self.b
-        loss, _ = calc_loss(sim_matrix)
-        return loss
+        return sim_matrix
+        # loss, _ = calc_loss(sim_matrix)
+        # return loss
