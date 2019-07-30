@@ -9,7 +9,7 @@ from utils import get_cossim, calc_loss, get_acc
 from torch.utils.tensorboard import SummaryWriter
 
 
-def train(dataset, log_dir='test_acc', N=128, lr=0.0001, epochs=2000, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=True):
+def train(dataset, log_dir='test_acc', N=64, lr=0.0001, epochs=2000, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=True):
     '''
     Training the model with preprocessed datasets.
     Example
@@ -93,11 +93,11 @@ def train(dataset, log_dir='test_acc', N=128, lr=0.0001, epochs=2000, proj=512, 
             EER_FAR = 0
             EER_FRR = 0
             for thres in thresholds:
-                sim_matrix_thresh = sim_matrix > thres
+                sim_matrix_thresh = (sim_matrix > thres).to(torch.float)
                 FAR = (sum([sim_matrix_thresh[i].sum()-sim_matrix_thresh[i, :, i].sum()
-                            for i in range(int(N))]) / (N-1.0)/(M/2)/N)
-                FRR = (sum([M/2-sim_matrix_thresh[i, :, i].float().sum()
-                            for i in range(int(N))]) / (float(M/2))/N)
+                            for i in range(N)]) / (N-1.0)/(M/2)/N)
+                FRR = (sum([M/2-sim_matrix_thresh[i, :, i].sum()
+                            for i in range(N)]) / (M/2)/N)
                 # Save threshold when FAR = FRR (=EER)
                 if diff > abs(FAR-FRR):
                     diff = abs(FAR-FRR)
