@@ -35,7 +35,7 @@ grid search for fine tunning
 
 ### TODOs
 - [x] Add tensorboard support.
-- [ ] Add accuracy for training and testing part.
+- [x] Add accuracy for training and testing part.
 - [ ] Add VAD for preprocessing.
 
 
