@@ -6,9 +6,10 @@ models/
 *~
 *.csv
 __pycache__
-log/
+log*/
 dataset*
 \#*
 \.\#*
 play_ground.py
 new_data_draft.ipynb
+test_acc/
