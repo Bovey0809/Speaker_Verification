@@ -9,7 +9,7 @@ from utils import get_cossim, calc_loss, get_acc
 from torch.utils.tensorboard import SummaryWriter
 
 
-def train(dataset, log_dir='test_acc', N=64, lr=0.0001, epochs=2000, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=True):
+def train(dataset, log_dir='log_acc', N=64, lr=0.0001, epochs=2000, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=True):
     '''
     Training the model with preprocessed datasets.
     Example
@@ -113,7 +113,7 @@ def train(dataset, log_dir='test_acc', N=64, lr=0.0001, epochs=2000, proj=512, h
                 writer.add_scalar('FAR', EER_FAR, iteration)
                 writer.add_scalar('FRR', EER_FRR, iteration)
                 writer.add_scalar('EER', EER, iteration)
-                writer.add_scalar('BATCH EER', batch_avg_EER, iteration)
+                writer.add_scalar('batch EER', batch_avg_EER, iteration)
                 writer.add_scalar('epoch loss', epoch_loss, epoch)
     if save_model is True:
         if not os.path.exists('./models'):

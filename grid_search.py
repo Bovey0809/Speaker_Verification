@@ -5,15 +5,15 @@ from train import train
 
 def pipeline(**params):
     # training
-    model_path = train('new_dataset/train_tisv',
-                       lr=params['lr'],
-                       epochs=params['max_epochs'],
-                       proj=params['proj'],
-                       hidden=params['hidden'],
-                       num_layers=params['num_layers'],
-                       opt=params['opt'],
-                       N=params['N'],
-                       step_size=params['step_size'])
+    train('preprocessed_dataset/train_tisv',
+          lr=params['lr'],
+          epochs=params['max_epochs'],
+          proj=params['proj'],
+          hidden=params['hidden'],
+          num_layers=params['num_layers'],
+          opt=params['opt'],
+          N=params['N'],
+          step_size=params['step_size'])
 
     # testing
     # acc = test(model_path,
@@ -33,7 +33,7 @@ if __name__ == '__main__':
         'hidden': [768],
         'num_layers': [3],
         'opt': ['Adam'],
-        'N': [128],
+        'N': [64, 32],
         'step_size': [1e7]
     }
     grid = ParameterGrid(parameters)
