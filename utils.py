@@ -75,3 +75,29 @@ def get_acc(sim_matrix, N, M):
     groud_truth = torch.arange(N, device=sim_matrix.device).view(N, 1)
     acc = torch.sum(torch.eq(predicted, groud_truth), dtype=torch.float)/N/M
     return acc
+
+
+def get_eer(embeddings, N, M):
+    enroll, verify = torch.split(embeddings, M//2, dim=1)
+    enroll = enroll.mean(1)
+    sim_matrix = get_cossim(verify, enroll)
+    diff = 1
+    EER = 0
+    EER_thresh = 0
+    EER_FAR = 0
+    EER_FRR = 0
+    thresholds = [0.01*i+0.5 for i in range(50)]
+    for thres in thresholds:
+        sim_matrix_thresh = (sim_matrix > thres).to(torch.float)
+        FAR = (sum([sim_matrix_thresh[i].sum()-sim_matrix_thresh[i, :, i].sum()
+                    for i in range(N)]) / (N-1.0)/(M/2)/N)
+        FRR = (sum([M/2-sim_matrix_thresh[i, :, i].sum()
+                    for i in range(N)]) / (M/2)/N)
+
+        if diff > abs(FAR-FRR):
+            diff = abs(FAR-FRR)
+            EER = (FAR+FRR)/2
+            EER_thresh = thres
+            EER_FAR = FAR
+            EER_FRR = FRR
+    return EER_thresh, EER, EER_FAR, EER_FRR

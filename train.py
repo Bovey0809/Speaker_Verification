@@ -5,16 +5,16 @@ from torch.optim.lr_scheduler import StepLR
 from data_load import SpeakerDatasetTIMITPreprocessed
 from embedder_net import SpeechEmbedder, GE2ELoss
 from torch.utils.data import DataLoader
-from utils import get_cossim, calc_loss, get_acc
+from utils import get_cossim, calc_loss, get_acc, get_eer
 from torch.utils.tensorboard import SummaryWriter
 
 
-def train(dataset, log_dir='test_acc', N=64, lr=0.0001, epochs=2000, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=True):
+def train(dataset, log_dir='log_acc', N=64, lr=0.0001, epochs=2000, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=True):
     '''
     Training the model with preprocessed datasets.
     Example
     python train.py dataset/train_tisv/
-    
+
     With grid search method together
     python grid_search.py
     '''
@@ -42,85 +42,68 @@ def train(dataset, log_dir='test_acc', N=64, lr=0.0001, epochs=2000, proj=512, h
                                     lr)
         scheduler = StepLR(optimizer, step_size, gamma=0.5)
 
-    train_dataset = SpeakerDatasetTIMITPreprocessed(dataset, M)
-    train_loader = DataLoader(
-        train_dataset, N, drop_last=True, shuffle=True, num_workers=0)
+    phrases = ['train_tisv', 'test_tisv']
+    datasets = {x: SpeakerDatasetTIMITPreprocessed(
+        os.path.join(dataset, x)) for x in phrases}
+    dataloaders = {x: DataLoader(datasets[x], N, drop_last=True, shuffle=True)
+                   for x in phrases}
+    # train_dataset = SpeakerDatasetTIMITPreprocessed(dataset, M)
+    # train_loader = DataLoader(
+    #     train_dataset, N, drop_last=True, shuffle=True, num_workers=0)
 
-    iteration = 0
-    thresholds = [0.01*i+0.5 for i in range(50)]
+    iters = 0
+
     for epoch in range(epochs):
-        if opt == 'SGD':
-            scheduler.step()
-        epoch_loss = 0
-        batch_avg_EER = 0
-        # print(epoch_loss, e)
-        for batch_id, mel_db in enumerate(train_loader):
-            mel_db = mel_db.to(device)
-            # assert utt_num % 2 == 0
-            mel_db = mel_db.flatten(0, 1)
-            optimizer.zero_grad()
-            # writer.add_graph(embedder_net, mel_db)
-            # writer.add_scalar('lr', get_lr(optimizer), iteration)
-            embeddings = embedder_net(mel_db)
-            sim_matrix = criterion(embeddings)
-            # get acc_val
+        for phrase in phrases:
+            if phrase == 'train_tisv':
+                if opt == 'SGD':
+                    scheduler.step()
+                    epoch_loss = 0
+                embedder_net.train()
+                criterion.train()
+            else:
+                embedder_net.eval()
+                criterion.eval()
+            for batch_id, mel_db in enumerate(dataloaders[phrase]):
+                mel_db = mel_db.to(device)
+                mel_db = mel_db.flatten(0, 1)
+                
+                optimizer.zero_grad()
 
-            loss, per_embedding_loss = calc_loss(sim_matrix)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(embedder_net.parameters(), 3.0)
-            torch.nn.utils.clip_grad_norm_(criterion.parameters(), 1.0)
-            optimizer.step()
-            epoch_loss += loss.item()
-            acc = get_acc(sim_matrix, N, M)
-            if log_dir:
-                writer.add_scalar('batch loss', loss, iteration)
-                writer.add_scalar('accuracy', acc, iteration)
-            iteration += 1
+                # forward
+                with torch.set_grad_enabled(phrase == 'train_tisv'):
+                    embeddings = embedder_net(mel_db)
+                    sim_matrix = criterion(embeddings)
+                    loss, per_embedding_loss = calc_loss(sim_matrix)
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(
+                        embedder_net.parameters(), 3.0)
+                    torch.nn.utils.clip_grad_norm_(
+                        criterion.parameters(), 1.0)
+                    optimizer.step()
+                epoch_loss += loss.item()
+                acc = get_acc(sim_matrix, N, M)
+                EER_thresh, EER, EER_FAR, EER_FRR = get_eer(
+                    embeddings, N, M)
+                iters += 1
 
-            # validation for eer
-            enrollment_embeddings, verification_embeddings = torch.split(
-                embeddings,  M//2, dim=1)
-            enrollment_centroids = enrollment_embeddings.mean(1)
+                if log_dir:
+                    writer.add_scalar('batch loss', loss, iters)
+                    writer.add_scalar('accuracy', acc, iters)
+                    writer.add_scalar('FAR', EER_FAR, iters)
+                    writer.add_scalar('FRR', EER_FRR, iters)
+                    writer.add_scalar('EER', EER, iters)
+                    writer.add_scalar('epoch loss', epoch_loss, epoch)
+            if save_model is True:
+                if not os.path.exists('./models'):
+                    os.makedirs('./models')
+                    save_model_path = os.path.join(
+                        'models', subdir+'transfer_model')
+                    torch.save(embedder_net.state_dict(), save_model_path)
+        # validation
+        else:
 
-            # what if verification get centorids
-            sim_matrix = get_cossim(
-                verification_embeddings, enrollment_centroids)  # N * M * proj
-
-            # calculating EER
-            diff = 1
-            EER = 0
-            EER_thresh = 0
-            EER_FAR = 0
-            EER_FRR = 0
-            for thres in thresholds:
-                sim_matrix_thresh = (sim_matrix > thres).to(torch.float)
-                FAR = (sum([sim_matrix_thresh[i].sum()-sim_matrix_thresh[i, :, i].sum()
-                            for i in range(N)]) / (N-1.0)/(M/2)/N)
-                FRR = (sum([M/2-sim_matrix_thresh[i, :, i].sum()
-                            for i in range(N)]) / (M/2)/N)
-                # Save threshold when FAR = FRR (=EER)
-                if diff > abs(FAR-FRR):
-                    diff = abs(FAR-FRR)
-                    EER = (FAR+FRR)/2
-                    EER_thresh = thres
-                    EER_FAR = FAR
-                    EER_FRR = FRR
-            
-            batch_avg_EER += EER
-            
-            if log_dir:
-                writer.add_text('EER', f"{EER}: thres: {EER_thresh:.2f}, FAR:{EER_FAR:.2f}, FRR: {EER_FRR:.2f}")
-                writer.add_scalar('FAR', EER_FAR, iteration)
-                writer.add_scalar('FRR', EER_FRR, iteration)
-                writer.add_scalar('EER', EER, iteration)
-                writer.add_scalar('BATCH EER', batch_avg_EER, iteration)
-                writer.add_scalar('epoch loss', epoch_loss, epoch)
-    if save_model is True:
-        if not os.path.exists('./models'):
-            os.makedirs('./models')
-        save_model_path = os.path.join('models', subdir+'transfer_model')
-        torch.save(embedder_net.state_dict(), save_model_path)
-        return save_model_path
+    return save_model_path
 
 
 if __name__ == '__main__':
