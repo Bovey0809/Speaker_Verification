@@ -6,7 +6,7 @@ from utils import get_centroids, get_cossim
 
 class SpeechEmbedder(nn.Module):
 
-    def __init__(self, mels=40, hidden=128, num_layers=3, proj=64, N=4, M=6):
+    def __init__(self, mels=40, hidden=128, num_layers=3, proj=64):
         super(SpeechEmbedder, self).__init__()
         self.LSTM_stack = nn.LSTM(
             mels, hidden, num_layers=num_layers, batch_first=True, dropout=0.5)
@@ -16,9 +16,6 @@ class SpeechEmbedder(nn.Module):
             elif 'weight' in name:  # weight用xavier初始化
                 nn.init.xavier_normal_(param)  # 这个说不定可以改变用uniform之类的
         self.projection = nn.Linear(hidden, proj)
-        self.n = N
-        self.m = M
-        self.proj = proj
 
     def forward(self, x):
         # (batch, frames, n_mels) 这个是由于使用了batch_first=True
@@ -27,8 +24,6 @@ class SpeechEmbedder(nn.Module):
         x = x[:, -1]  # [batch, hidden]
         x = self.projection(x)  # [batch, projection]
         x = F.normalize(x)  # x.shape == [batch, projection]
-        x = torch.reshape(x, (self.n, self.m, self.proj))
-        # This line is different from original
         return x
 
 

@@ -101,3 +101,4 @@ def get_eer(embeddings, N, M):
             EER_FAR = FAR
             EER_FRR = FRR
     return EER_thresh, EER, EER_FAR, EER_FRR
+
