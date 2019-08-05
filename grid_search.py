@@ -33,7 +33,7 @@ if __name__ == '__main__':
         'hidden': [768],
         'num_layers': [3],
         'opt': ['Adam'],
-        'N': [64, 32],
+        'N': [64],
         'step_size': [1e7]
     }
     grid = ParameterGrid(parameters)
