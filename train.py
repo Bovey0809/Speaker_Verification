@@ -24,7 +24,8 @@ def train(dataset, log_dir='test_vad', N=64, lr=0.0001, epochs=200, proj=512, hi
     if log_dir:
         writer = SummaryWriter(f'./{log_dir}/{subdir}')
     # define net, loss, optimizer
-    writer.add_text(f'datasetdir:{dataset}')
+    writer.add_text('dataset_dir', f'{dataset}')
+    writer.add_text('log_dir', f'{log_dir}')
     device = torch.device('cuda')
     N = int(N)
     M = 6
@@ -54,7 +55,7 @@ def train(dataset, log_dir='test_vad', N=64, lr=0.0001, epochs=200, proj=512, hi
             datasets['test_tisv'], test_N, drop_last=True, shuffle=True
         )}
 
-    # train_dataset = SpeakerDatasetTIMITPreprocessed(dataset, M)
+    # train_dataset = SpeakerDatasetTIMnnITPreprocessed(dataset, M)
     # train_loader = DataLoader(
     #     train_dataset, N, drop_last=True, shuffle=True, num_workers=0)
 
