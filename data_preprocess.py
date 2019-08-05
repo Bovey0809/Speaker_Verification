@@ -6,11 +6,11 @@ import sys
 import glob
 
 
-def save_spectrogram_tisv(audio_path, dataset_name='preprocessed_dataset'):
+def save_spectrogram_tisv(audio_path, dataset_name='preprocessed_dataset', sr=8000):
     tisv_frame = 180
     hop = 0.01
     window = 0.025
-    sr = 16000
+    # sr = 8000
     nfft = 512
     nmels = 40
 
@@ -77,4 +77,4 @@ def save_spectrogram_tisv(audio_path, dataset_name='preprocessed_dataset'):
 
 
 if __name__ == '__main__':
-    save_spectrogram_tisv(sys.argv[1])
+    save_spectrogram_tisv(sys.argv[1], sys.argv[2])

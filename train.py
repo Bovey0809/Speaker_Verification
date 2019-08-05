@@ -24,6 +24,7 @@ def train(dataset, log_dir='test_vad', N=64, lr=0.0001, epochs=200, proj=512, hi
     if log_dir:
         writer = SummaryWriter(f'./{log_dir}/{subdir}')
     # define net, loss, optimizer
+    writer.add_text(f'datasetdir:{dataset}')
     device = torch.device('cuda')
     N = int(N)
     M = 6
