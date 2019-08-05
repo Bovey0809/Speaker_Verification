@@ -5,6 +5,6 @@
 # test run
 export CUDA_VISIBLE_DEVICES=0
 python data_preprocess.py datasets/company_old "preprocessed_company_data" 8000
-python train.py "preprocessed_comanpy_data"
+python train.py "preprocessed_company_data"
 
 
