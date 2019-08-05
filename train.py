@@ -9,7 +9,7 @@ from utils import calc_loss, get_acc, get_eer
 from torch.utils.tensorboard import SummaryWriter
 
 
-def train(dataset, log_dir='test_vad', N=64, lr=0.0001, epochs=200, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=False):
+def train(dataset, log_dir='log_pbx', N=64, lr=0.0001, epochs=200, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=False):
     '''
     Training the model with preprocessed datasets.
     Example

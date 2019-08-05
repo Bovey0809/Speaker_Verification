@@ -5,7 +5,7 @@ from train import train
 
 def pipeline(**params):
     # training
-    train('preprocessed_dataset/train_tisv',
+    train('preprocessed_company_data',
           lr=params['lr'],
           epochs=params['max_epochs'],
           proj=params['proj'],
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         'step_size': [1e7]
     }
     grid = ParameterGrid(parameters)
-    max_acc = 0
+    # max_acc = 0
     # result = pd.DataFrame(grid)
 
     for i, params in enumerate(grid):
