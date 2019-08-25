@@ -5,7 +5,7 @@ from train import train
 
 def pipeline(**params):
     # training
-    train('preprocessed_company_data',
+    train('preprocessed_jnas',
           lr=params['lr'],
           epochs=params['max_epochs'],
           proj=params['proj'],
@@ -27,13 +27,13 @@ if __name__ == '__main__':
 
     # parameters sets
     parameters = {
-        'max_epochs': [2000],
+        'max_epochs': [20000],
         'lr': [0.0001],
-        'proj': [128, 256, 512],
-        'hidden': [768],
+        'proj': [32, 64, 128, 256, 512],
+        'hidden': [32],
         'num_layers': [3],
         'opt': ['Adam'],
-        'N': [32],
+        'N': [128],
         'step_size': [1e7]
     }
     grid = ParameterGrid(parameters)

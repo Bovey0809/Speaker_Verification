@@ -9,7 +9,7 @@ from utils import calc_loss, get_acc, get_eer
 from torch.utils.tensorboard import SummaryWriter
 
 
-def train(dataset, log_dir='log_pbx', N=64, lr=0.0001, epochs=200, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=False):
+def train(dataset, log_dir='log_jnas_100M', N=128, lr=0.0001, epochs=200, proj=512, hidden=768, num_layers=3, opt='Adam', step_size=2e3, save_model=False):
     '''
     Training the model with preprocessed datasets.
     Example
@@ -28,7 +28,7 @@ def train(dataset, log_dir='log_pbx', N=64, lr=0.0001, epochs=200, proj=512, hid
     writer.add_text('log_dir', f'{log_dir}')
     device = torch.device('cuda')
     N = int(N)
-    M = 6
+    M = 100
     embedder_net = SpeechEmbedder(
         hidden=hidden, num_layers=num_layers, proj=proj)
     embedder_net.to(device)
@@ -121,7 +121,11 @@ def train(dataset, log_dir='log_pbx', N=64, lr=0.0001, epochs=200, proj=512, hid
                     os.makedirs('./models')
                     save_model_path = os.path.join(
                         'models', subdir+'transfer_model')
-                    torch.save(embedder_net.state_dict(), save_model_path)
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': embedder_net.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'loss': loss}, save_model_path)
 
 
 if __name__ == '__main__':
