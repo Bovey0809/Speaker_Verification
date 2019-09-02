@@ -1,9 +1,10 @@
 # Speaker_Verification
-Tensorflow implementation of generalized end-to-end loss for speaker verification
+Pytorch implementation of dvector for speaker verification
 
 ### Explanation
 - This code is the implementation of generalized end-to-end loss for speaker verification (https://arxiv.org/abs/1710.10467)
 - This paper improved the previous work (End-to-End Text-Dependent Speaker Verification, https://arxiv.org/abs/1509.08062)
+- Data augmentation found in this paper (Robust DNN embeddings for speaker recognition, https://www.danielpovey.com/files/2018_icassp_xvectors.pdf)
 
 ### Speaker Verification
 - Speaker verification task is 1-1 check for the specific enrolled voice and the new voice. This task needs higher accuracy than speaker identification which is N-1 check for N enrolled voices and a new voice. 
