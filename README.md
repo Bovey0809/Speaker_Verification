@@ -29,6 +29,44 @@ grid search for fine tunning
 3. python gridsearch.py
 4. tensorboard --logdir log
 
+#### Pipeline
+1. Preprocess the dataset.
+2. Try grid_search.
+
+#### Example
+- assumption
+- we have a new dataset of wav directory named jsan.
+
+##### 1st step preprocess
+-   ```python
+    python data_preprocess.py jsan preprocessed_jsan
+    ```
+    1. jsan is the direcotory of the wav files.
+    2. preprpcessed_jsan is the derecotry to save preprocessed file.
+
+##### 2nd step train.py
+- ![IMAGE](resources/07B4BFF181552C8916F6F9B11B053A61.jpg =1212x67)
+    - in the file train.py, there is a second parameter which indicates the place to save tensorboard log, you should change the parameter in order to save to another place.
+
+##### 3rd step grid_search.py
+- ![IMAGE](resources/5108EE6E7AF302BB9956043253615AEB.jpg =348x197)
+    - The first parameter in train(...) should be the preprocessed dataset derectory
+- grid_search.py
+- ![IMAGE](resources/52D2F0C0BBF0186A96BA0DEDEBCA39F8.jpg =265x223)
+    - Change the parameters in the grid_search.py.
+    ```python
+    export CUDA_VISIBLE_DEVICES=0; python grid_seach.py
+    ```
+
+# Conclusion
+1. Use data_preprocess.py to preprocess dataset.
+2. Change log directory in train.py.
+3. Change preprocessed data direcotory in grid_search.py
+4. Change the parameters in grid_search.py
+5. Run grid_search.py
+6. Use tensorboard to see the results.
+
+
 ### Require
 1. pytorch (0.4, 1.0, 1.1)
 2. tensorboard
