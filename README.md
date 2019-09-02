@@ -36,8 +36,13 @@ grid search for fine tunning
 ### TODOs
 - [x] Add tensorboard support.
 - [x] Add accuracy for training and testing part.
-- [ ] Add VAD for preprocessing.
+- [x] Add VAD for preprocessing.
+- [x] Transfer learning.
+- [x] Convert wav.file to vector.
+- [ ] Add different data augmentation in preprocessing.
 
 
 ### Results
 - TI-SV
+   - Hidden nodes: 32, layers: 3, dvector length: 512, 9% EER for VCTK.
+   - Hidden nodes: 32, layers: 3, dvector length: 256, 3% EER for jnas.
