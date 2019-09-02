@@ -8,13 +8,13 @@ from utils import calc_loss, get_acc, get_eer
 from torch.utils.tensorboard import SummaryWriter
 
 
-def transfer(model_path, data_path, log_dir, epochs=200, N=64, M=6):
+def transfer(model_path, data_path, log_dir, epochs=200, N=128, M=6):
     '''
     mode: freeze or finetuning
     '''
     # LOG
     info = f'{model_path}_{data_path}_{N}'
-    writer = SummaryWriter(f'./{log_dir}{info}')
+    writer = SummaryWriter(f'./{log_dir}/{info}')
     # LOAD MODEL
     device = torch.device('cuda')
     checkpoint = torch.load(model_path)
@@ -23,8 +23,10 @@ def transfer(model_path, data_path, log_dir, epochs=200, N=64, M=6):
     criterion = GE2ELoss(device)
     optimizer = torch.optim.Adam([{'params': embedder_net.parameters()},
                                   {'params': criterion.parameters()}],
-                                 0.0001,
-                                 (0.5, 0.9))
+                                 0.001,
+                                 (0.9, 0.999),
+                                 1e-8,
+                                 weight_decay=1e-3)
 
     embedder_net.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
