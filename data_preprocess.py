@@ -4,9 +4,12 @@ import librosa
 from shutil import rmtree
 import sys
 import glob
+# import scipy
 
 
-def save_spectrogram_tisv(audio_path, dataset_name='preprocessed_jnas', sr=16000):
+def save_spectrogram_tisv(audio_path,
+                          dataset_name='preprocessed_jnas',
+                          sr=16000):
     tisv_frame = 180
     hop = 0.01
     window = 0.025
@@ -49,8 +52,10 @@ def save_spectrogram_tisv(audio_path, dataset_name='preprocessed_jnas', sr=16000
                     if (interval[1]-interval[0]) > utter_min_len:
                         # save first and last 180 frames of spectrogram.
                         utter_part = utter[interval[0]:interval[1]]
-                        S = librosa.core.stft(y=utter_part, n_fft=nfft,
-                                              win_length=int(window * sr), hop_length=int(hop * sr))
+                        S = librosa.core.stft(y=utter_part,
+                                              n_fft=nfft,
+                                              win_length=int(window * sr),
+                                              hop_length=int(hop * sr))
                         S = np.abs(S) ** 2
                         mel_basis = librosa.filters.mel(
                             sr=sr, n_fft=nfft, n_mels=nmels)
@@ -72,7 +77,8 @@ def save_spectrogram_tisv(audio_path, dataset_name='preprocessed_jnas', sr=16000
                                  i), utterances_spec)
         else:
             np.save(os.path.join(test_dataset_path,
-                                 f"speaker{i-train_speaker_num}"), utterances_spec)
+                                 f"speaker{i-train_speaker_num}"),
+                    utterances_spec)
         print(utterances_spec.shape)
 
 

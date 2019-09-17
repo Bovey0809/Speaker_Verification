@@ -28,7 +28,7 @@ def train(dataset, save_model_path, log_dir='log_test_transfer', N=64, lr=0.0001
     writer.add_text('log_dir', f'{log_dir}')
     device = torch.device('cuda')
     N = int(N)
-    M = 128
+    M = 256
     embedder_net = SpeechEmbedder(
         hidden=hidden, num_layers=num_layers, proj=proj)
     embedder_net.to(device)
@@ -136,4 +136,4 @@ def train(dataset, save_model_path, log_dir='log_test_transfer', N=64, lr=0.0001
 
 
 if __name__ == '__main__':
-    train(sys.argv[1], sys.argv[2], sys.argv[3], epochs=10000, proj=256, save_model=True)
+    train(sys.argv[1], sys.argv[2], sys.argv[3], N=64, epochs=10000, hidden=64, proj=256, save_model=True)
